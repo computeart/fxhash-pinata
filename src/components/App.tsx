@@ -1,6 +1,5 @@
 import { FormEvent, useState } from "react";
 import fxhashService, { Collection, Token } from "../service/fxhash-service";
-import AlertAsync from "react-native-alert-async";
 import pinataService from "../service/pinata-service";
 
 enum PIN_STATUS {
@@ -16,6 +15,7 @@ export default function App() {
   const [collection, setCollection] = useState<Collection>();
   const [pinMessage, setPinMessage] = useState<string>();
   const [pinError, setPinError] = useState<string>();
+  const [pinThumbnail, setPinThumbnail] = useState<boolean>(false);
   const [pinningStatus, setPinningStatus] = useState<PIN_STATUS>(
     PIN_STATUS.WAITING
   );
@@ -31,7 +31,7 @@ export default function App() {
     reset();
 
     let start = window.confirm(
-      "You are about to UNPIN EVERY assets from your account. Do you want to continue ?"
+      "You are about to UNPIN EVERY assets from your Pinagta account. Do you want to continue ?"
     );
 
     if (start) {
@@ -52,6 +52,7 @@ export default function App() {
 
     setPinMessage("Loading ...");
     let collection;
+    let currentPinThumbnail = pinThumbnail;
 
     collection = await fxhashService.getCollection(parseInt(collectionId));
     if (!collection) {
@@ -73,6 +74,7 @@ export default function App() {
           pinataApiKey,
           pinataApiSecretKey,
           parseInt(collectionId),
+          currentPinThumbnail,
           (token) => {
             setPinMessage(`Pinned token '${token.metadata.name}'...`);
           }
@@ -90,78 +92,119 @@ export default function App() {
     }
   };
 
+  const logoUrl = new URL("/assets/logo.webm", import.meta.url);
+
   return (
-    <div>
-      <h1>Pin FXHash collection</h1>
-      <p className="explanation">
-        This is a tool that allow to pin an entire FXHash collection. <br />
-        You can retrieve the collection id on the generative token page on{" "}
-        <a href="http://fxhash.xyz">http://fxhash.xyz</a>.<br />
-        You can generate an API key from your Pinata account on{" "}
-        <a href="https://app.pinata.cloud/">https://app.pinata.cloud/</a>
-      </p>
-      <form onSubmit={pinCollection}>
-        <label className="labeled-input">
-          Collection Id:{" "}
-          <input
-            type="text"
-            name="collection-id"
-            onChange={(e) => setCollectionId(e.target.value)}
-          />
-        </label>
+    <div className="container">
+      <section id="content">
+        <h1>Pin FXHash collection</h1>
+        <p className="explanation">
+          This is a tool that allow to pin an entire{" "}
+          <a href="http://fxhash.xyz">FXHash</a> collection. <br />
+          You can retrieve the collection id on the generative token page on.
+          <br />
+          You can{" "}
+          <a href="https://app.pinata.cloud/keys">generate an API key</a> from
+          your Pinata account on{" "}
+        </p>
+        <form onSubmit={pinCollection}>
+          <label className="labeled-input">
+            Collection Id:{" "}
+            <input
+              type="text"
+              name="collection-id"
+              onChange={(e) => setCollectionId(e.target.value)}
+            />
+          </label>
+          <br />
+          <label className="labeled-input">
+            Pinata API Key:{" "}
+            <input
+              type="text"
+              name="pinata-api-key"
+              onChange={(e) => setPinataApiKey(e.target.value)}
+            />
+          </label>
+          <br />
+          <label className="labeled-input">
+            Pinata API Secret Key:{" "}
+            <input
+              type="text"
+              name="pinata-api-secret-key"
+              onChange={(e) => setPinataApiSecretKey(e.target.value)}
+            />
+          </label>
+          <br />
+          <label className="labeled-checkbox">
+            Pin thumbnail:
+            <input
+              type="checkbox"
+              name="pin-thumbnail"
+              onChange={(e) => setPinThumbnail(!pinThumbnail)}
+            />
+          </label>
+          <br />
+          <button
+            disabled={
+              pinningStatus != PIN_STATUS.WAITING ||
+              !collectionId ||
+              !pinataApiKey ||
+              !pinataApiSecretKey
+            }
+          >
+            Pin collection
+          </button>
+          <button
+            type="button"
+            onClick={removeAllPin}
+            disabled={
+              pinningStatus != PIN_STATUS.WAITING ||
+              !pinataApiKey ||
+              !pinataApiSecretKey
+            }
+          >
+            Reset Pinata account
+          </button>
+        </form>
         <br />
-        <label className="labeled-input">
-          Pinata API Key:{" "}
-          <input
-            type="text"
-            name="pinata-api-key"
-            onChange={(e) => setPinataApiKey(e.target.value)}
-          />
-        </label>
         <br />
-        <label className="labeled-input">
-          Pinata API Secret Key:{" "}
-          <input
-            type="text"
-            name="pinata-api-secret-key"
-            onChange={(e) => setPinataApiSecretKey(e.target.value)}
+        {pinningStatus != PIN_STATUS.WAITING ? (
+          <div className="status">
+            {collection ? (
+              <h3>
+                Start pinning {collection.name}, {collection.objktsCount} objkt
+                found.
+              </h3>
+            ) : null}
+            <p>{pinMessage}</p>
+          </div>
+        ) : null}
+        <p>{pinError ? pinError : null}</p>
+      </section>
+      <section id="footer">
+        <a href="http://compute.art/">
+          <video
+            src={`${logoUrl.toString()}`}
+            autoPlay
+            loop
+            muted
+            playsInline
           />
-        </label>
-        <br />
-        <button
-          disabled={
-            pinningStatus != PIN_STATUS.WAITING ||
-            !collectionId ||
-            !pinataApiKey ||
-            !pinataApiSecretKey
-          }
-        >
-          Pin collection
-        </button>
-        <button
-          type="button"
-          onClick={removeAllPin}
-          disabled={
-            pinningStatus != PIN_STATUS.WAITING ||
-            !pinataApiKey ||
-            !pinataApiSecretKey
-          }
-        >
-          Delete All Tokens
-        </button>
-      </form>
-      {pinningStatus != PIN_STATUS.WAITING ? (
-        <div className="status">
-          {collection ? (
-            <h3>
-              Start pinning {collection.name}, {collection.objktsCount} objkt
-              found.
-            </h3>
-          ) : null}
-          <p>{pinMessage}</p>
-        </div>
-      ) : null}
-      <p>{pinError ? pinError : null}</p>
+        </a>
+        <ul>
+          <li>
+            <a href="https://compute.art/sintra/">Sintra</a>
+          </li>
+          <li>
+            <a href="https://twitter.com/computenft" target="_blank">
+              Twitter
+            </a>
+          </li>
+          <li>
+            <a href="mailto:hello@compute.art">hello@compute.art</a>
+          </li>
+        </ul>
+      </section>
     </div>
   );
 }

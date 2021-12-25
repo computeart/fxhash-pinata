@@ -38,14 +38,15 @@ class PinataService {
     pinataApiKey: string,
     pinataSecretApiKey: string,
     collectionId: number,
-    onTokenPinned: (token: Token) => void
+    pinThumbnail: boolean = false,
+    onTokenPinned?: (token: Token) => void
   ) => {
     const pinata = pinataSDK(pinataApiKey, pinataSecretApiKey);
 
     const tokens = await fxhashService.retrieveCollectionTokens(collectionId);
 
     for (const token of tokens) {
-      await Promise.all([
+      const promises = [
         // Pin the artwork
         pinata.pinByHash(
           fxhashService.getIpfsHashFromUri(token.metadata.artifactUri),
@@ -61,7 +62,34 @@ class PinataService {
             name: `Metas - ${token.metadata.name}`,
           },
         }),
-      ]);
+      ];
+
+      if (pinThumbnail) {
+        // Pin the thumbnail
+        promises.push(
+          pinata.pinByHash(
+            fxhashService.getIpfsHashFromUri(token.metadata.thumbnailUri),
+            {
+              pinataMetadata: {
+                name: `Thumbnail - ${token.metadata.name}`,
+              },
+            }
+          )
+        );
+        // Pin the display
+        promises.push(
+          pinata.pinByHash(
+            fxhashService.getIpfsHashFromUri(token.metadata.displayUri),
+            {
+              pinataMetadata: {
+                name: `Display - ${token.metadata.name}`,
+              },
+            }
+          )
+        );
+      }
+
+      await Promise.all(promises);
 
       onTokenPinned?.(token);
       console.log(`Pinned '${token.metadata.name}'.`);
