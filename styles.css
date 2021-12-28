@@ -38,7 +38,6 @@ a {
 }
 
 button {
-  float: left;
   color: rgb(184, 184, 184);
   font-family: "Input Mono";
   background-color: rgb(0, 0, 0);
@@ -102,6 +101,7 @@ button.primary:hover {
   align-items: center;
   justify-content: space-between;
   width: 260px;
+  margin: 15px 0;
 }
 
 .explanation {
@@ -172,4 +172,8 @@ button.primary:hover {
 }
 #footer li:last-child {
   margin-right: 0;
+}
+
+.button-container {
+  display: flex;
 }

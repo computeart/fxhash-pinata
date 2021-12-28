@@ -16,6 +16,7 @@ export default function App() {
   const [pinMessage, setPinMessage] = useState<string>();
   const [pinError, setPinError] = useState<string>();
   const [pinThumbnail, setPinThumbnail] = useState<boolean>(false);
+  const [avoidDuplicates, setAvoidDuplicates] = useState<boolean>(true);
   const [pinningStatus, setPinningStatus] = useState<PIN_STATUS>(
     PIN_STATUS.WAITING
   );
@@ -52,7 +53,8 @@ export default function App() {
 
     setPinMessage("Loading ...");
     let collection;
-    let currentPinThumbnail = pinThumbnail;
+    const currentPinThumbnail = pinThumbnail;
+    const currentAvoidDuplicates = avoidDuplicates;
 
     collection = await fxhashService.getCollection(parseInt(collectionId));
     if (!collection) {
@@ -74,9 +76,12 @@ export default function App() {
           pinataApiKey,
           pinataApiSecretKey,
           parseInt(collectionId),
-          currentPinThumbnail,
-          (token) => {
-            setPinMessage(`Pinned token '${token.metadata.name}'...`);
+          {
+            avoidDuplicates: currentAvoidDuplicates,
+            pinThumbnail: currentPinThumbnail,
+            onTokenPinned: (token) => {
+              setPinMessage(`Pinned token '${token.metadata.name}'...`);
+            },
           }
         );
       } catch (error: any) {
@@ -140,31 +145,43 @@ export default function App() {
             <input
               type="checkbox"
               name="pin-thumbnail"
+              checked={pinThumbnail}
               onChange={(e) => setPinThumbnail(!pinThumbnail)}
             />
           </label>
+          <label className="labeled-checkbox">
+            Avoid duplicates:
+            <input
+              type="checkbox"
+              name="avoid-duplicates"
+              checked={avoidDuplicates}
+              onChange={(e) => setAvoidDuplicates(!avoidDuplicates)}
+            />
+          </label>
           <br />
-          <button
-            disabled={
-              pinningStatus != PIN_STATUS.WAITING ||
-              !collectionId ||
-              !pinataApiKey ||
-              !pinataApiSecretKey
-            }
-          >
-            Pin collection
-          </button>
-          <button
-            type="button"
-            onClick={removeAllPin}
-            disabled={
-              pinningStatus != PIN_STATUS.WAITING ||
-              !pinataApiKey ||
-              !pinataApiSecretKey
-            }
-          >
-            Reset Pinata account
-          </button>
+          <div className="button-container">
+            <button
+              disabled={
+                pinningStatus != PIN_STATUS.WAITING ||
+                !collectionId ||
+                !pinataApiKey ||
+                !pinataApiSecretKey
+              }
+            >
+              Pin collection
+            </button>
+            <button
+              type="button"
+              onClick={removeAllPin}
+              disabled={
+                pinningStatus != PIN_STATUS.WAITING ||
+                !pinataApiKey ||
+                !pinataApiSecretKey
+              }
+            >
+              Reset Pinata account
+            </button>
+          </div>
         </form>
         <br />
         <br />

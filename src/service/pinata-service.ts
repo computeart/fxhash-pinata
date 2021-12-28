@@ -1,4 +1,9 @@
-import pinataSDK, { PinataClient, PinataPinListResponseRow } from "@pinata/sdk";
+import pinataSDK, {
+  PinataClient,
+  PinataPinByHashResponse,
+  PinataPinListResponse,
+  PinataPinListResponseRow,
+} from "@pinata/sdk";
 import { Dispatch, SetStateAction } from "react";
 import fxhashService, { Token } from "./fxhash-service";
 
@@ -7,6 +12,11 @@ import fxhashService, { Token } from "./fxhash-service";
 
 // let pinata = pinataSDK(pinataApiKey, pinataSecretApiKey);
 
+type PinCollectionOpts = {
+  avoidDuplicates?: boolean;
+  pinThumbnail?: boolean;
+  onTokenPinned?: (token: Token) => void;
+};
 class PinataService {
   removeAllPin = async (
     pinataApiKey: string,
@@ -38,60 +48,84 @@ class PinataService {
     pinataApiKey: string,
     pinataSecretApiKey: string,
     collectionId: number,
-    pinThumbnail: boolean = false,
-    onTokenPinned?: (token: Token) => void
+    opts?: PinCollectionOpts
+    // pinThumbnail: boolean = false,
+    // onTokenPinned?: (token: Token) => void
   ) => {
+    opts ??= {};
+    const pinThumbnail = opts.pinThumbnail || false;
+    const avoidDuplicates = opts.avoidDuplicates || true;
     const pinata = pinataSDK(pinataApiKey, pinataSecretApiKey);
 
     const tokens = await fxhashService.retrieveCollectionTokens(collectionId);
 
+    // Retrieve the current pinned assets if needed
+    let alreadyPinnedListHash: string[] = [];
+    if (avoidDuplicates) {
+      let pinList: PinataPinListResponseRow[] = [];
+      let response: PinataPinListResponse;
+      let pageOffset = 0;
+      const pageLimit = 1000;
+
+      do {
+        response = await pinata.pinList({
+          status: "pinned",
+          pageLimit,
+          pageOffset,
+        });
+        pinList = [...pinList, ...response.rows];
+        pageOffset += response.count;
+      } while (response.count == pageLimit);
+
+      alreadyPinnedListHash = pinList.map((pin) => pin.ipfs_pin_hash);
+      console.log(alreadyPinnedListHash[0]);
+    }
+
+    const pinataPin = (
+      uri: string,
+      name: string
+    ): Promise<PinataPinByHashResponse> | undefined => {
+      const hash = fxhashService.getIpfsHashFromUri(uri);
+      if (!alreadyPinnedListHash.includes(hash)) {
+        return pinata.pinByHash(hash, {
+          pinataMetadata: {
+            name: name,
+          },
+        });
+      }
+    };
+
     for (const token of tokens) {
       const promises = [
         // Pin the artwork
-        pinata.pinByHash(
-          fxhashService.getIpfsHashFromUri(token.metadata.artifactUri),
-          {
-            pinataMetadata: {
-              name: `Minted - ${token.metadata.name}`,
-            },
-          }
+        pinataPin(
+          token.metadata.artifactUri,
+          `Minted - ${token.metadata.name}`
         ),
         // Pin the metadata
-        pinata.pinByHash(fxhashService.getIpfsHashFromUri(token.metadataUri), {
-          pinataMetadata: {
-            name: `Metas - ${token.metadata.name}`,
-          },
-        }),
+        pinataPin(token.metadataUri, `Metas - ${token.metadata.name}`),
       ];
 
       if (pinThumbnail) {
         // Pin the thumbnail
         promises.push(
-          pinata.pinByHash(
-            fxhashService.getIpfsHashFromUri(token.metadata.thumbnailUri),
-            {
-              pinataMetadata: {
-                name: `Thumbnail - ${token.metadata.name}`,
-              },
-            }
+          pinataPin(
+            token.metadata.thumbnailUri,
+            `Thumbnail - ${token.metadata.name}`
           )
         );
         // Pin the display
         promises.push(
-          pinata.pinByHash(
-            fxhashService.getIpfsHashFromUri(token.metadata.displayUri),
-            {
-              pinataMetadata: {
-                name: `Display - ${token.metadata.name}`,
-              },
-            }
+          pinataPin(
+            token.metadata.displayUri,
+            `Display - ${token.metadata.name}`
           )
         );
       }
 
       await Promise.all(promises);
 
-      onTokenPinned?.(token);
+      opts.onTokenPinned?.(token);
       console.log(`Pinned '${token.metadata.name}'.`);
     }
 
