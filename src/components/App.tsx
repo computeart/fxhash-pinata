@@ -5,7 +5,6 @@ import pinataService from "../service/pinata-service";
 enum PIN_STATUS {
   WAITING,
   PINNING,
-  FINISHED,
 }
 
 export default function App() {
@@ -16,7 +15,6 @@ export default function App() {
   const [pinMessage, setPinMessage] = useState<string>();
   const [pinError, setPinError] = useState<string>();
   const [pinThumbnail, setPinThumbnail] = useState<boolean>(false);
-  const [avoidDuplicates, setAvoidDuplicates] = useState<boolean>(true);
   const [pinningStatus, setPinningStatus] = useState<PIN_STATUS>(
     PIN_STATUS.WAITING
   );
@@ -40,7 +38,8 @@ export default function App() {
       pinataService.removeAllPin(pinataApiKey, pinataApiSecretKey, (pin) => {
         setPinMessage(`Unpinned '${pin.metadata.name}'.`);
       });
-      setPinningStatus(PIN_STATUS.FINISHED);
+      setPinningStatus(PIN_STATUS.WAITING);
+      setPinMessage("Done");
     } else {
       reset();
     }
@@ -52,9 +51,9 @@ export default function App() {
     reset();
 
     setPinMessage("Loading ...");
+    setPinningStatus(PIN_STATUS.PINNING);
     let collection;
     const currentPinThumbnail = pinThumbnail;
-    const currentAvoidDuplicates = avoidDuplicates;
 
     collection = await fxhashService.getCollection(parseInt(collectionId));
     if (!collection) {
@@ -69,7 +68,6 @@ export default function App() {
     );
 
     if (startPin) {
-      setPinningStatus(PIN_STATUS.PINNING);
       setCollection(collection);
       try {
         await pinataService.pinCollection(
@@ -77,10 +75,9 @@ export default function App() {
           pinataApiSecretKey,
           parseInt(collectionId),
           {
-            avoidDuplicates: currentAvoidDuplicates,
             pinThumbnail: currentPinThumbnail,
             onTokenPinned: (token) => {
-              setPinMessage(`Pinned token '${token.metadata.name}'...`);
+              setPinMessage(`Pinning token '${token.metadata.name}'...`);
             },
           }
         );
@@ -90,7 +87,7 @@ export default function App() {
         return;
       }
 
-      setPinningStatus(PIN_STATUS.FINISHED);
+      setPinningStatus(PIN_STATUS.WAITING);
       setPinMessage("Done");
     } else {
       reset();
@@ -103,15 +100,22 @@ export default function App() {
     <div className="container">
       <section id="content">
         <h1>Pin FXHash collection</h1>
-        <p className="explanation">
-          This is a tool that allow to pin an entire{" "}
-          <a href="http://fxhash.xyz">FXHash</a> collection. <br />
-          You can retrieve the collection id on the generative token page on.
-          <br />
-          You can{" "}
-          <a href="https://app.pinata.cloud/keys">generate an API key</a> from
-          your Pinata account on{" "}
-        </p>
+        <div className="explanation">
+          <p>
+            This tool allows you to pin an{" "}
+            <a href="http://fxhash.xyz">FXHash</a> collection on{" "}
+            <a href="https://app.pinata.cloud/keys">Pinata</a>. For this you
+            must <a href="https://app.pinata.cloud/keys">generate an API key</a>{" "}
+            from your account. The collection id can be found on the generative
+            token page.
+          </p>
+          <p>
+            <i>
+              Only the not pinned artworks will be added. So you can reuse the
+              tool as you wish and add the thumbnails afterwards.
+            </i>
+          </p>
+        </div>
         <form onSubmit={pinCollection}>
           <label className="labeled-input">
             Collection Id:{" "}
@@ -149,15 +153,6 @@ export default function App() {
               onChange={(e) => setPinThumbnail(!pinThumbnail)}
             />
           </label>
-          <label className="labeled-checkbox">
-            Avoid duplicates:
-            <input
-              type="checkbox"
-              name="avoid-duplicates"
-              checked={avoidDuplicates}
-              onChange={(e) => setAvoidDuplicates(!avoidDuplicates)}
-            />
-          </label>
           <br />
           <div className="button-container">
             <button
@@ -171,6 +166,7 @@ export default function App() {
               Pin collection
             </button>
             <button
+              style={{ visibility: "hidden" }}
               type="button"
               onClick={removeAllPin}
               disabled={
@@ -185,17 +181,15 @@ export default function App() {
         </form>
         <br />
         <br />
-        {pinningStatus != PIN_STATUS.WAITING ? (
-          <div className="status">
-            {collection ? (
-              <h3>
-                Start pinning {collection.name}, {collection.objktsCount} objkt
-                found.
-              </h3>
-            ) : null}
-            <p>{pinMessage}</p>
-          </div>
-        ) : null}
+        <div className="status">
+          {collection ? (
+            <h3>
+              Start pinning {collection.name}, {collection.objktsCount} objkt
+              found.
+            </h3>
+          ) : null}
+          <p>{pinMessage}</p>
+        </div>
         <p>{pinError ? pinError : null}</p>
       </section>
       <section id="footer">
@@ -209,9 +203,6 @@ export default function App() {
           />
         </a>
         <ul>
-          <li>
-            <a href="https://compute.art/sintra/">Sintra</a>
-          </li>
           <li>
             <a href="https://twitter.com/computenft" target="_blank">
               Twitter
