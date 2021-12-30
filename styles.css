@@ -179,6 +179,17 @@ button.primary:hover {
   margin-right: 0;
 }
 
+#footer a {
+  text-decoration: none;
+  color: #e1e1e1;
+  transition: 0.2s;
+}
+
+#footer a:hover {
+  color: #aaa;
+  transition: 0.3s ease;
+}
+
 .button-container {
   display: flex;
 }
