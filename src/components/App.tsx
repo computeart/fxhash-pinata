@@ -111,8 +111,8 @@ export default function App() {
           </p>
           <p>
             <i>
-              Only the not pinned artworks will be added. So you can reuse the
-              tool as you wish and add the thumbnails afterwards.
+              Only artworks not pinned will be added. So you can reuse the tool
+              as you wish and add the thumbnails afterwards.
             </i>
           </p>
         </div>
