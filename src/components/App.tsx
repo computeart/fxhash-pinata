@@ -111,8 +111,8 @@ export default function App() {
           </p>
           <p>
             <i>
-              Only artworks not pinned will be added. So you can reuse the tool
-              as you wish and add the thumbnails afterwards.
+              The tool filters out duplicate IPFS links. So you can reuse the
+              tool as you wish and add the thumbnails afterwards.
             </i>
           </p>
         </div>
